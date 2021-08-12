@@ -113,7 +113,7 @@ def main():
     df = pd.DataFrame.from_records(standings)
 
     plot = figure(
-        title=f"{season_dropdown} F1 {title.capitalize()} Standings after round {round_slider}",
+        title=f"{season_dropdown} F1 {title.capitalize()} Standings after Round {round_slider}",
         x_axis_label="Race Number",
         y_axis_label="Number of Points",
         tools=[HoverTool(), "save"],
@@ -141,7 +141,8 @@ def main():
         line = plot.line(
             x="races", y="points", line_width=2, line_color=color, source=source
         )
-        points_last_race = int(team_df[team_df["race_num"] == round_slider]["points"])
+        plr = team_df.iloc[team_df["race_num"].argmax()]["points"]
+        points_last_race = int(plr)
         legend_it.append((f"{team}\t{points_last_race}", [line]))
 
     legend_it.sort(reverse=True, key=lambda x: int(x[0].split("\t")[-1]))
