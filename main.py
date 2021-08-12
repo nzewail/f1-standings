@@ -1,10 +1,11 @@
-import streamlit as st
-import requests
+from random import randint
+
 import pandas as pd
-from bokeh.plotting import figure
+import requests
+import streamlit as st
 from bokeh.models import ColumnDataSource, Legend
 from bokeh.models.tools import HoverTool
-from random import randint
+from bokeh.plotting import figure
 
 HOST = "https://ergast.com/api/f1"
 STANDINGS_TYPE = frozenset({"DriverStandings", "ConstructorStandings"})
@@ -23,7 +24,7 @@ def standings_url(season, standings_type, race_round="last") -> str:
 def get_num_races(season):
     url = f"{build_url_base(season)}/last/results.json"
     response = requests.get(url).json()
-    return int(response['MRData']['RaceTable']['round'])
+    return int(response["MRData"]["RaceTable"]["round"])
 
 
 @st.cache(show_spinner=False)
@@ -38,11 +39,11 @@ def get_standings(season, race_round, standings_type):
     latest_iteration = st.empty()
     bar = st.progress(0)
 
-    for r in range(1, race_round+1, 1):
-        latest_iteration.text(f'Fetching data for round {r}')
-        bar.progress(r/(race_round+1))
+    for r in range(1, race_round + 1, 1):
+        latest_iteration.text(f"Fetching data for round {r}")
+        bar.progress(r / (race_round + 1))
         parsed_response = hit_standings_api(season, r, standings_type)
-        
+
         standings.extend(parsed_response)
     latest_iteration.empty()
     bar.empty()
@@ -54,15 +55,19 @@ def clean_championship_type(season_type: str) -> str:
 
 
 def parse_standings_response(race_num, standings_type, response):
-    standings = response['MRData']['StandingsTable']['StandingsLists'][0][standings_type]
+    standings = response["MRData"]["StandingsTable"]["StandingsLists"][0][
+        standings_type
+    ]
     parsed_response = []
     championship_type = clean_championship_type(standings_type)
     for r in standings:
         standing = {
-            'race_num': race_num,
-            'position': int(r['position']),
-            championship_type: str(r[championship_type][f"{championship_type.lower()}Id"].capitalize()),
-            'points': int(r['points'])
+            "race_num": race_num,
+            "position": int(r["position"]),
+            championship_type: str(
+                r[championship_type][f"{championship_type.lower()}Id"].capitalize()
+            ),
+            "points": int(r["points"]),
         }
         parsed_response.append(standing)
     return parsed_response
@@ -71,9 +76,17 @@ def parse_standings_response(race_num, standings_type, response):
 st.title("F1 Season Tracker")
 st.markdown("This data is courtesy of [Ergast](http://ergast.com/mrd/)")
 
-season_dropdown = st.sidebar.slider('Season', min_value=1950, max_value=2021, step=1, value=2021)
-round_slider = st.sidebar.slider('Race Round', min_value=1, max_value=get_num_races(season_dropdown), step=1, value=get_num_races(season_dropdown))
-standings_type = st.sidebar.radio('Championship', options=STANDINGS_TYPE, index=1)
+season_dropdown = st.sidebar.slider(
+    "Season", min_value=1950, max_value=2021, step=1, value=2021
+)
+round_slider = st.sidebar.slider(
+    "Race Round",
+    min_value=1,
+    max_value=get_num_races(season_dropdown),
+    step=1,
+    value=get_num_races(season_dropdown),
+)
+standings_type = st.sidebar.radio("Championship", options=STANDINGS_TYPE, index=1)
 
 standings = get_standings(season_dropdown, round_slider, standings_type)
 title = clean_championship_type(standings_type)
@@ -81,10 +94,10 @@ title = clean_championship_type(standings_type)
 df = pd.DataFrame.from_records(standings)
 
 p = figure(
-    title=f'{season_dropdown} F1 {title.capitalize()} Standings after round {round_slider}',
-    x_axis_label='Race Number',
-    y_axis_label='Number of Points',
-    tools=[HoverTool(), 'save'],
+    title=f"{season_dropdown} F1 {title.capitalize()} Standings after round {round_slider}",
+    x_axis_label="Race Number",
+    y_axis_label="Number of Points",
+    tools=[HoverTool(), "save"],
     tooltips="@team: Race Number:@races Points: @points",
 )
 
@@ -93,15 +106,21 @@ legend_it = []
 for t in df[title].unique():
     driver_df = df[df[title] == t]
     color = (randint(0, 255), randint(0, 255), randint(0, 255))
-    source = ColumnDataSource(data=dict(points=driver_df['points'], races=driver_df['race_num'], team=driver_df[title]))
-    c = p.line(x='races', y='points', line_width=2, line_color=color, source=source)
-    points_last_race = int(driver_df[driver_df['race_num'] == round_slider]['points'])
+    source = ColumnDataSource(
+        data=dict(
+            points=driver_df["points"],
+            races=driver_df["race_num"],
+            team=driver_df[title],
+        )
+    )
+    c = p.line(x="races", y="points", line_width=2, line_color=color, source=source)
+    points_last_race = int(driver_df[driver_df["race_num"] == round_slider]["points"])
     legend_it.append((f"{t}\t{points_last_race}", [c]))
 
 legend = Legend(items=legend_it)
-legend.click_policy = 'hide'
+legend.click_policy = "hide"
 legend.title = title.capitalize()
 
-p.add_layout(legend, 'left')
+p.add_layout(legend, "left")
 
 st.bokeh_chart(p, use_container_width=True)
