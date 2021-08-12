@@ -1,0 +1,4 @@
+pandas
+streamlit
+bokeh==2.2.2
+requests
