@@ -86,11 +86,14 @@ def main():
     st.title("F1 Season Tracker")
     st.markdown("This data is courtesy of [Ergast](http://ergast.com/mrd/)")
 
-    season, num_races = get_season_num_rounds()
+    season, _ = get_season_num_rounds()
 
     season_dropdown = st.sidebar.slider(
         "Season", min_value=FIRST_F1_SEASON, max_value=season, step=1, value=season
     )
+
+    _, num_races = get_season_num_rounds(season_dropdown)
+
     round_slider = st.sidebar.slider(
         "Race Round",
         min_value=1,
