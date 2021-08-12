@@ -11,6 +11,7 @@ from bokeh.plotting import figure
 HOST = "https://ergast.com/api/f1"
 CHAMPIONSHIPS = frozenset({"DriverStandings", "ConstructorStandings"})
 FIRST_F1_SEASON = 1950
+PAGE_NAME = "F1 Season Tracker"
 
 
 def hit_url(url: str):
@@ -83,7 +84,10 @@ def parse_standings_response(race_num, championship, response):
 
 
 def main():
-    st.title("F1 Season Tracker")
+    st.set_page_config(
+        page_title=PAGE_NAME,
+    )
+    st.title(PAGE_NAME)
     st.markdown("This data is courtesy of [Ergast](http://ergast.com/mrd/)")
 
     season, _ = get_season_num_rounds()
@@ -140,6 +144,7 @@ def main():
         points_last_race = int(team_df[team_df["race_num"] == round_slider]["points"])
         legend_it.append((f"{team}\t{points_last_race}", [line]))
 
+    legend_it.sort(reverse=True, key=lambda x: int(x[0].split("\t")[-1]))
     legend = Legend(items=legend_it)
     legend.click_policy = "hide"
     legend.title = title.capitalize()
