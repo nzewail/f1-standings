@@ -1,4 +1,5 @@
 from random import randint
+from typing import List
 
 import pandas as pd
 import requests
@@ -8,33 +9,43 @@ from bokeh.models.tools import HoverTool
 from bokeh.plotting import figure
 
 HOST = "https://ergast.com/api/f1"
-STANDINGS_TYPE = frozenset({"DriverStandings", "ConstructorStandings"})
+CHAMPIONSHIPS = frozenset({"DriverStandings", "ConstructorStandings"})
 
 
-def build_url_base(season="current") -> str:
+def hit_url(url: str):
+    res = requests.get(url)
+    if res.status_code == 200:
+        return res.json()
+    raise Exception(
+        "%s returned an unsuccessful status_code: %s %s"
+        % (url, res.status_code, res.text)
+    )
+
+
+def build_url_base(season: str = "current") -> str:
     return f"{HOST}/{season}"
 
 
-def standings_url(season, standings_type, race_round="last") -> str:
-    if standings_type not in STANDINGS_TYPE:
-        raise Exception("%s must be in %s" % standings_type, STANDINGS_TYPE)
-    return f"{build_url_base(season)}/{race_round}/{standings_type}.json"
+def standings_url(season: str, championship: str, race_round="last") -> str:
+    if championship not in CHAMPIONSHIPS:
+        raise Exception("%s must be in %s" % (championship, CHAMPIONSHIPS))
+    return f"{build_url_base(season)}/{race_round}/{championship}.json"
 
 
-def get_num_races(season):
+def get_num_races(season: str) -> int:
     url = f"{build_url_base(season)}/last/results.json"
-    response = requests.get(url).json()
+    response = hit_url(url)
     return int(response["MRData"]["RaceTable"]["round"])
 
 
 @st.cache(show_spinner=False)
-def hit_standings_api(season, race_round, standings_type):
-    url = standings_url(season, standings_type, race_round)
-    results = requests.get(url)
-    return parse_standings_response(race_round, standings_type, results.json())
+def hit_standings_api(season: str, race_round: str, championship: str) -> List[dict]:
+    url = standings_url(season, championship, race_round)
+    results = hit_url(url)
+    return parse_standings_response(race_round, championship, results)
 
 
-def get_standings(season, race_round, standings_type):
+def get_standings(season, race_round, championship):
     standings = []
     latest_iteration = st.empty()
     bar = st.progress(0)
@@ -42,7 +53,7 @@ def get_standings(season, race_round, standings_type):
     for r in range(1, race_round + 1, 1):
         latest_iteration.text(f"Fetching data for round {r}")
         bar.progress(r / (race_round + 1))
-        parsed_response = hit_standings_api(season, r, standings_type)
+        parsed_response = hit_standings_api(season, r, championship)
 
         standings.extend(parsed_response)
     latest_iteration.empty()
@@ -86,7 +97,7 @@ round_slider = st.sidebar.slider(
     step=1,
     value=get_num_races(season_dropdown),
 )
-standings_type = st.sidebar.radio("Championship", options=STANDINGS_TYPE, index=1)
+standings_type = st.sidebar.radio("Championship", options=CHAMPIONSHIPS, index=1)
 
 standings = get_standings(season_dropdown, round_slider, standings_type)
 title = clean_championship_type(standings_type)
